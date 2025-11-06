@@ -1,0 +1,208 @@
+name: Publish Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      napcat_version:
+        description: 'NapCat版本（如：v4.8.120）'
+        required: true
+        type: string
+        default: 'v4.8.120'
+      qq_url_amd64:
+        description: 'QQ AMD64下载链接'
+        required: true
+        type: string
+        default: 'https://dldir1v6.qq.com/qqfile/qq/QQNT/ab90fdfa/linuxqq_3.2.20-40768_x86_64.AppImage'
+      qq_url_arm64:
+        description: 'QQ ARM64下载链接'
+        required: true
+        type: string
+        default: 'https://dldir1v6.qq.com/qqfile/qq/QQNT/ab90fdfa/linuxqq_3.2.20-40768_arm64.AppImage'
+
+jobs:
+  build-and-push:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            arch: arm64
+    permissions:
+      contents: read
+      packages: write
+      # 用于 attestations
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download and extract QQ AppImage
+        run: |
+          QQ_URL="${{ matrix.arch == 'amd64' && inputs.qq_url_amd64 || inputs.qq_url_arm64 }}"
+          echo "Downloading QQ from: $QQ_URL"
+          wget -O QQ.AppImage "$QQ_URL"
+          chmod +x QQ.AppImage
+          ./QQ.AppImage --appimage-extract
+          
+          mkdir -p extracted
+          cp squashfs-root/resources/app/wrapper.node extracted/
+          cp squashfs-root/resources/app/libssh2.so.1 extracted/
+          cp squashfs-root/resources/app/libcrbase.so extracted/
+          cp squashfs-root/resources/app/libbugly.so extracted/
+          cp -r squashfs-root/resources/app/sharp-lib extracted/
+          cp squashfs-root/resources/app/package.json extracted/
+          
+          rm -rf QQ.AppImage squashfs-root
+
+      - name: Download and extract NapCat
+        run: |
+          wget -O NapCat.Shell.zip "https://github.com/NapNeko/NapCatQQ/releases/download/${{ inputs.napcat_version }}/NapCat.Shell.zip"
+          unzip NapCat.Shell.zip -d extracted/napcat
+          rm NapCat.Shell.zip
+
+      - name: Trim NapCat native files for target architecture
+        run: |
+          ARCH="${{ matrix.arch }}"
+          NAPCAT_DIR="extracted/napcat"
+          
+          # 确定要保留的架构后缀
+          if [ "$ARCH" = "amd64" ]; then
+            KEEP_SUFFIX="linux.x64"
+            KEEP_PTY_DIR="linux.x64"
+          else
+            KEEP_SUFFIX="linux.arm64"
+            KEEP_PTY_DIR="linux.arm64"
+          fi
+          
+          echo "Keeping only $KEEP_SUFFIX native modules"
+          
+          # 处理 ffmpeg 目录
+          if [ -d "$NAPCAT_DIR/native/ffmpeg" ]; then
+            cd "$NAPCAT_DIR/native/ffmpeg"
+            # 删除其他架构的文件，保留当前架构
+            find . -type f -name "*.node" ! -name "*$KEEP_SUFFIX.node" -delete
+            cd -
+          fi
+          
+          # 处理 napi2native 目录
+          if [ -d "$NAPCAT_DIR/native/napi2native" ]; then
+            cd "$NAPCAT_DIR/native/napi2native"
+            find . -type f -name "*.node" ! -name "*$KEEP_SUFFIX.node" -delete
+            cd -
+          fi
+          
+          # 处理 packet 目录
+          if [ -d "$NAPCAT_DIR/native/packet" ]; then
+            cd "$NAPCAT_DIR/native/packet"
+            find . -type f -name "*.node" ! -name "*$KEEP_SUFFIX.node" -delete
+            cd -
+          fi
+          
+          # 处理 pty 目录 - 保留特定架构的子目录，删除其他
+          if [ -d "$NAPCAT_DIR/native/pty" ]; then
+            cd "$NAPCAT_DIR/native/pty"
+            # 删除不匹配的目录
+            for dir in */; do
+              if [ -d "$dir" ] && [ "$dir" != "$KEEP_PTY_DIR/" ]; then
+                echo "Removing pty directory: $dir"
+                rm -rf "$dir"
+              fi
+            done
+            cd -
+          fi
+          
+          echo "NapCat native modules trimmed successfully"
+          echo "Remaining files:"
+          find "$NAPCAT_DIR/native" -type f -name "*.node" 2>/dev/null || true
+          find "$NAPCAT_DIR/native/pty" -type d 2>/dev/null || true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/napneko/nodenapcat
+            ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node
+          tags: |
+            type=raw,value=latest,suffix=-${{ matrix.arch }}
+            type=raw,value={{date 'YYYYMMDD'}},suffix=-${{ matrix.arch }}
+          flavor: |
+            latest=false
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+          provenance: false
+
+      - name: Output image info
+        run: |
+          echo "## 镜像已发布 🐳 (${{ matrix.arch }})" >> $GITHUB_STEP_SUMMARY
+          echo "**Platform:** ${{ matrix.platform }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Digest:** ${{ steps.build-and-push.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+
+  create-manifest:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and push manifest for GHCR
+        run: |
+          docker buildx imagetools create -t ghcr.io/napneko/nodenapcat:latest \
+            ghcr.io/napneko/nodenapcat:latest-amd64 \
+            ghcr.io/napneko/nodenapcat:latest-arm64
+
+      - name: Create and push manifest for Docker Hub
+        run: |
+          docker buildx imagetools create -t ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:latest \
+            ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:latest-amd64 \
+            ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:latest-arm64
+
+      - name: Output manifest info
+        run: |
+          echo "## 多架构镜像已创建 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "ghcr.io/napneko/nodenapcat:latest" >> $GITHUB_STEP_SUMMARY
+          echo "${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:latest" >> $GITHUB_STEP_SUMMARY
