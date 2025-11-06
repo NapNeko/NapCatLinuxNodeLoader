@@ -7,17 +7,17 @@ on:
         description: 'NapCat版本（如：v4.8.120）'
         required: true
         type: string
-        default: 'v4.8.120'
+        default: 'v4.9.25'
       qq_url_amd64:
         description: 'QQ AMD64下载链接'
         required: true
         type: string
-        default: 'https://dldir1v6.qq.com/qqfile/qq/QQNT/ab90fdfa/linuxqq_3.2.20-40768_x86_64.AppImage'
+        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/18039323/linuxqq_3.2.21-41857_x86_64.AppImage'
       qq_url_arm64:
         description: 'QQ ARM64下载链接'
         required: true
         type: string
-        default: 'https://dldir1v6.qq.com/qqfile/qq/QQNT/ab90fdfa/linuxqq_3.2.20-40768_arm64.AppImage'
+        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/18039323/linuxqq_3.2.21-41857_arm64.AppImage'
 
 jobs:
   build-and-push:
@@ -43,9 +43,10 @@ jobs:
 
       - name: Download and extract QQ AppImage
         run: |
+          sudo apt-get update && sudo apt-get install -y aria2
           QQ_URL="${{ matrix.arch == 'amd64' && inputs.qq_url_amd64 || inputs.qq_url_arm64 }}"
           echo "Downloading QQ from: $QQ_URL"
-          wget -O QQ.AppImage "$QQ_URL"
+          aria2c -x 8 -s 8 -o QQ.AppImage "$QQ_URL"
           chmod +x QQ.AppImage
           ./QQ.AppImage --appimage-extract
           
@@ -61,7 +62,7 @@ jobs:
 
       - name: Download and extract NapCat
         run: |
-          wget -O NapCat.Shell.zip "https://github.com/NapNeko/NapCatQQ/releases/download/${{ inputs.napcat_version }}/NapCat.Shell.zip"
+          aria2c -x 8 -s 8 -o NapCat.Shell.zip "https://github.com/NapNeko/NapCatQQ/releases/download/${{ inputs.napcat_version }}/NapCat.Shell.zip"
           unzip NapCat.Shell.zip -d extracted/napcat
           rm NapCat.Shell.zip
 
