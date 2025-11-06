@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       napcat_version:
-        description: 'NapCat版本（如：v4.8.120）'
+        description: 'NapCat版本（如：v4.9.26'
         required: true
         type: string
-        default: 'v4.9.25'
+        default: 'v4.9.26'
       qq_url_amd64:
         description: 'QQ AMD64下载链接'
         required: true
