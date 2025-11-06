@@ -51,6 +51,10 @@ jobs:
           ./QQ.AppImage --appimage-extract
           
           mkdir -p extracted
+          # 如果是amd64 cp squashfs-root/resources/app/libunwind-x86_64.so.8 extracted/ arm64则不操作
+          if [ "${{ matrix.arch }}" = "amd64" ]; then
+            cp squashfs-root/resources/app/libunwind-x86_64.so.8 extracted/
+          fi
           cp squashfs-root/resources/app/wrapper.node extracted/
           cp squashfs-root/resources/app/libssh2.so.1 extracted/
           cp squashfs-root/resources/app/libcrbase.so extracted/

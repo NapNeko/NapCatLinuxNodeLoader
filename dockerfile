@@ -15,6 +15,7 @@ RUN apt update && apt install -y \
     libxcb1 \
     libbsd0 \
     libmd0 \
+    libx11-xcb1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
