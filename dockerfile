@@ -18,6 +18,7 @@ ARG TARGETARCH
 # 复制平台特定的依赖库
 COPY ./lib/${TARGETARCH}/libX11-xcb.so.1 /app/
 COPY ./lib/${TARGETARCH}/libX11.so.6 /app/
+COPY ./lib/${TARGETARCH}/libXext.so.6 /app/
 COPY ./lib/${TARGETARCH}/node_addon.node /app/node_addon.node
 
 # 复制 load.cjs
