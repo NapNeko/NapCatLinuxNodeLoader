@@ -1,6 +1,6 @@
 # NapCatLinuxNodeLoader
 
-`docker run -it ghcr.io/napneko/nodenapcat:latest -p 6099:6099`
+`docker run -it ghcr.io/napneko/nodenapcat:latest /bin/bash`
 
 github地址：https://github.com/orgs/NapNeko/packages/container/package/nodenapcat
 
