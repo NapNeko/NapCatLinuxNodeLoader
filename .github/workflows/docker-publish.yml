@@ -55,6 +55,7 @@ jobs:
           if [ "${{ matrix.arch }}" = "amd64" ]; then
             cp squashfs-root/resources/app/libunwind-x86_64.so.8 extracted/
           fi
+          cp squashfs-root/resources/app/libunwind.so.8 extracted/
           cp squashfs-root/resources/app/wrapper.node extracted/
           cp squashfs-root/resources/app/libssh2.so.1 extracted/
           cp squashfs-root/resources/app/libcrbase.so extracted/
