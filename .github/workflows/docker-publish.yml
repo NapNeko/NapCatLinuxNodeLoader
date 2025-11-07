@@ -156,7 +156,7 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node
           tags: |
             type=raw,value=latest,suffix=-${{ matrix.arch }}
-            type=raw,value={{date 'YYYYMMDD'}},suffix=-${{ matrix.arch }}
+            type=raw,value=${{ inputs.napcat_version }},suffix=-${{ matrix.arch }}
           flavor: |
             latest=false
 
@@ -206,15 +206,25 @@ jobs:
           docker buildx imagetools create -t ghcr.io/napneko/nodenapcat:latest \
             ghcr.io/napneko/nodenapcat:latest-amd64 \
             ghcr.io/napneko/nodenapcat:latest-arm64
+          
+          docker buildx imagetools create -t ghcr.io/napneko/nodenapcat:${{ inputs.napcat_version }} \
+            ghcr.io/napneko/nodenapcat:${{ inputs.napcat_version }}-amd64 \
+            ghcr.io/napneko/nodenapcat:${{ inputs.napcat_version }}-arm64
 
       - name: Create and push manifest for Docker Hub
         run: |
           docker buildx imagetools create -t ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:latest \
             ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:latest-amd64 \
             ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:latest-arm64
+          
+          docker buildx imagetools create -t ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:${{ inputs.napcat_version }} \
+            ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:${{ inputs.napcat_version }}-amd64 \
+            ${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:${{ inputs.napcat_version }}-arm64
 
       - name: Output manifest info
         run: |
           echo "## 多架构镜像已创建 🎉" >> $GITHUB_STEP_SUMMARY
           echo "ghcr.io/napneko/nodenapcat:latest" >> $GITHUB_STEP_SUMMARY
+          echo "ghcr.io/napneko/nodenapcat:${{ inputs.napcat_version }}" >> $GITHUB_STEP_SUMMARY
           echo "${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:latest" >> $GITHUB_STEP_SUMMARY
+          echo "${{ secrets.DOCKERHUB_USERNAME }}/napcat-node:${{ inputs.napcat_version }}" >> $GITHUB_STEP_SUMMARY
