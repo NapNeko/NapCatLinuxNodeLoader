@@ -53,8 +53,10 @@ jobs:
           mkdir -p extracted
           if [ "${{ matrix.arch }}" = "amd64" ]; then
             cp squashfs-root/resources/app/libunwind-x86_64.so.8 extracted/libunwind-x86_64.so.8
+            touch extracted/libunwind-aarch64.so.8  # 创建空文件以避免后续错误
           else
             cp squashfs-root/resources/app/libunwind-aarch64.so.8 extracted/libunwind-aarch64.so.8
+            touch extracted/libunwind-x86_64.so.8  # 创建空文件以避免后续错误
           fi
           cp squashfs-root/resources/app/libunwind.so.8 extracted/
           cp squashfs-root/resources/app/wrapper.node extracted/

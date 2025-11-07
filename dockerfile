@@ -30,12 +30,8 @@ COPY ./extracted/napcat /app/napcat/
 
 ARG TARGETARCH
 
-if [ "${TARGETARCH}" = "amd64" ]; then
-    COPY ./extracted/libunwind-x86_64.so.8 /app/libunwind-x86_64.so.8
-else
-    COPY ./extracted/libunwind-aarch64.so.8 /app/libunwind-aarch64.so.8
-fi
-
+COPY ./extracted/libunwind-x86_64.so.8 /app/libunwind-x86_64.so.8
+COPY ./extracted/libunwind-aarch64.so.8 /app/libunwind-aarch64.so.8
 COPY ./lib/${TARGETARCH}/node_addon.node /app/node_addon.node
 
 
