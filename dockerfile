@@ -3,7 +3,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
-# 安装系统依赖
 RUN apt update && apt install -y \
     libx11-6 \
     libxext6 \
@@ -19,20 +18,27 @@ RUN apt update && apt install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制 workflow 处理好的文件
 COPY ./extracted/wrapper.node /app/
 COPY ./extracted/libssh2.so.1 /app/
 COPY ./extracted/libcrbase.so /app/
 COPY ./extracted/libbugly.so /app/
+COPY ./extracted/libunwind.so.8 /app/
+
 COPY ./extracted/sharp-lib /app/sharp-lib/
 COPY ./extracted/package.json /app/
 COPY ./extracted/napcat /app/napcat/
 
-# 根据目标平台选择性拷贝 node_addon
 ARG TARGETARCH
+
+if [ "${TARGETARCH}" = "amd64" ]; then
+    COPY ./extracted/libunwind-x86_64.so.8 /app/libunwind-x86_64.so.8
+else
+    COPY ./extracted/libunwind-aarch64.so.8 /app/libunwind-aarch64.so.8
+fi
+
 COPY ./lib/${TARGETARCH}/node_addon.node /app/node_addon.node
 
-# 复制 load.cjs
+
 COPY ./load.cjs /app/
 
 CMD ["node", "/app/load.cjs"]
