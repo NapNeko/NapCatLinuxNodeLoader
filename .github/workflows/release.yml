@@ -1,0 +1,164 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      napcat_version:
+        description: 'NapCat版本（如：v4.9.99）'
+        required: true
+        type: string
+        default: 'v4.9.99'
+      qq_url_amd64:
+        description: 'QQ AMD64下载链接'
+        required: true
+        type: string
+        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/18039323/linuxqq_3.2.21-41857_x86_64.AppImage'
+      qq_url_arm64:
+        description: 'QQ ARM64下载链接'
+        required: true
+        type: string
+        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/18039323/linuxqq_3.2.21-41857_arm64.AppImage'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platform: linux/amd64
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            arch: arm64
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download and extract QQ AppImage
+        run: |
+          sudo apt-get update && sudo apt-get install -y aria2
+          QQ_URL="${{ matrix.arch == 'amd64' && inputs.qq_url_amd64 || inputs.qq_url_arm64 }}"
+          echo "Downloading QQ from: $QQ_URL"
+          aria2c -x 8 -s 8 -o QQ.AppImage "$QQ_URL"
+          chmod +x QQ.AppImage
+          ./QQ.AppImage --appimage-extract
+          
+          mkdir -p extracted
+          if [ "${{ matrix.arch }}" = "amd64" ]; then
+            cp squashfs-root/resources/app/libunwind-x86_64.so.8 extracted/libunwind-x86_64.so.8
+          else
+            cp squashfs-root/resources/app/libunwind-aarch64.so.8 extracted/libunwind-aarch64.so.8
+          fi
+          cp squashfs-root/resources/app/libunwind.so.8 extracted/
+          cp squashfs-root/resources/app/wrapper.node extracted/
+          cp squashfs-root/resources/app/libssh2.so.1 extracted/
+          cp squashfs-root/resources/app/libcrbase.so extracted/
+          cp squashfs-root/resources/app/libbugly.so extracted/
+          cp -r squashfs-root/resources/app/sharp-lib extracted/
+          cp squashfs-root/resources/app/package.json extracted/
+          
+          rm -rf QQ.AppImage squashfs-root
+
+      - name: Download and extract NapCat
+        run: |
+          aria2c -x 8 -s 8 -o NapCat.Shell.zip "https://github.com/NapNeko/NapCatQQ/releases/download/${{ inputs.napcat_version }}/NapCat.Shell.zip"
+          unzip NapCat.Shell.zip -d extracted/napcat
+          rm NapCat.Shell.zip
+
+      - name: Trim NapCat native files for target architecture
+        run: |
+          ARCH="${{ matrix.arch }}"
+          NAPCAT_DIR="extracted/napcat"
+          
+          if [ "$ARCH" = "amd64" ]; then
+            KEEP_SUFFIX="linux.x64"
+            KEEP_PTY_DIR="linux.x64"
+          else
+            KEEP_SUFFIX="linux.arm64"
+            KEEP_PTY_DIR="linux.arm64"
+          fi
+          
+          echo "Keeping only $KEEP_SUFFIX native modules"
+          
+          # 处理 ffmpeg 目录
+          if [ -d "$NAPCAT_DIR/native/ffmpeg" ]; then
+            cd "$NAPCAT_DIR/native/ffmpeg"
+            find . -type f -name "*.node" ! -name "*$KEEP_SUFFIX.node" -delete
+            cd -
+          fi
+          
+          # 处理 napi2native 目录
+          if [ -d "$NAPCAT_DIR/native/napi2native" ]; then
+            cd "$NAPCAT_DIR/native/napi2native"
+            find . -type f -name "*.node" ! -name "*$KEEP_SUFFIX.node" -delete
+            cd -
+          fi
+          
+          # 处理 packet 目录
+          if [ -d "$NAPCAT_DIR/native/packet" ]; then
+            cd "$NAPCAT_DIR/native/packet"
+            find . -type f -name "*.node" ! -name "*$KEEP_SUFFIX.node" -delete
+            cd -
+          fi
+          
+          # 处理 pty 目录
+          if [ -d "$NAPCAT_DIR/native/pty" ]; then
+            cd "$NAPCAT_DIR/native/pty"
+            for dir in */; do
+              if [ -d "$dir" ] && [ "$dir" != "$KEEP_PTY_DIR/" ]; then
+                echo "Removing pty directory: $dir"
+                rm -rf "$dir"
+              fi
+            done
+            cd -
+          fi
+          
+          echo "NapCat native modules trimmed successfully"
+
+      - name: Copy loader files
+        run: |
+          cp load.cjs extracted/
+          mkdir -p extracted/lib/${{ matrix.arch }}
+          cp lib/${{ matrix.arch }}/node_addon.node extracted/lib/${{ matrix.arch }}/
+
+      - name: Create release archive
+        run: |
+          cd extracted
+          tar -czvf ../NapCatLinuxNodeLoader-${{ matrix.arch }}.tar.gz .
+          cd ..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NapCatLinuxNodeLoader-${{ matrix.arch }}
+          path: NapCatLinuxNodeLoader-${{ matrix.arch }}.tar.gz
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.napcat_version }}
+          name: NapCatLinuxNodeLoader ${{ inputs.napcat_version }}
+          files: |
+            dist/NapCatLinuxNodeLoader-amd64.tar.gz
+            dist/NapCatLinuxNodeLoader-arm64.tar.gz
+          generate_release_notes: true
+          draft: false
+          prerelease: false
