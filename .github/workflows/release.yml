@@ -12,12 +12,12 @@ on:
         description: 'QQ AMD64下载链接'
         required: true
         type: string
-        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/18039323/linuxqq_3.2.21-41857_x86_64.AppImage'
+        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/8015ff90/linuxqq_3.2.21-42086_x86_64.AppImage'
       qq_url_arm64:
         description: 'QQ ARM64下载链接'
         required: true
         type: string
-        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/18039323/linuxqq_3.2.21-41857_arm64.AppImage'
+        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/8015ff90/linuxqq_3.2.21-42086_arm64.AppImage'
 
 jobs:
   build:
