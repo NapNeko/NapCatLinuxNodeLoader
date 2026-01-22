@@ -8,5 +8,5 @@ const PACKAGE_JSON_PATH = path.join(BASE_DIR, 'package.json');
 const NAPCAT_MJS_PATH = path.join(BASE_DIR, 'napcat', 'napcat.mjs');
 process.env.NAPCAT_WRAPPER_PATH = WRAPPER_NODE_PATH;
 process.env.NAPCAT_QQ_PACKAGE_INFO_PATH = PACKAGE_JSON_PATH;
-process.env.NAPCAT_NODE_CJS_ENV_LOADER_PATH = __filename;
+process.env.NAPCAT_NODE_CJS_LOADER_PATH = __filename;
 // process.env.NAPCAT_QQ_VERSION_CONFIG_PATH = CONFIG_JSON_PATH;
