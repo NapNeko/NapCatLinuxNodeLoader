@@ -1,23 +1,23 @@
-.name: Publish Docker Image
+name: Publish Docker Image
 
 on:
   workflow_dispatch:
     inputs:
       napcat_version:
-        description: 'NapCat版本（如：v4.10.43）'
+        description: 'NapCat版本（如：v4.9.26'
         required: true
         type: string
-        default: 'v4.10.43'
+        default: 'v4.9.26'
       qq_url_amd64:
         description: 'QQ AMD64下载链接'
         required: true
         type: string
-        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/8015ff90/linuxqq_3.2.21-42086_x86_64.AppImage'
+        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/18039323/linuxqq_3.2.21-41857_x86_64.AppImage'
       qq_url_arm64:
         description: 'QQ ARM64下载链接'
         required: true
         type: string
-        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/8015ff90/linuxqq_3.2.21-42086_arm64.AppImage'
+        default: 'https://dldir1.qq.com/qqfile/qq/QQNT/18039323/linuxqq_3.2.21-41857_arm64.AppImage'
 
 jobs:
   build-and-push:
