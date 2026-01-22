@@ -35,6 +35,7 @@ COPY ./extracted/libunwind-aarch64.so.8 /app/libunwind-aarch64.so.8
 COPY ./lib/${TARGETARCH}/node_addon.node /app/node_addon.node
 
 
-COPY ./load.cjs /app/
+COPY ./loadenv.cjs /app/
+COPY ./loadnapcat.cjs /app/
 
-CMD ["node", "/app/load.cjs"]
+CMD ["node", "/app/loadnapcat.cjs"]

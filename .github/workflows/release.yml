@@ -121,7 +121,8 @@ jobs:
 
       - name: Copy loader files
         run: |
-          cp load.cjs extracted/
+          cp loadenv.cjs extracted/
+          cp loadnapcat.cjs extracted/
           mkdir -p extracted/lib/${{ matrix.arch }}
           cp lib/${{ matrix.arch }}/node_addon.node extracted/lib/${{ matrix.arch }}/
 
