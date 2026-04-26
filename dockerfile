@@ -34,7 +34,9 @@ COPY ./extracted/libunwind-x86_64.so.8 /app/libunwind-x86_64.so.8
 COPY ./extracted/libunwind-aarch64.so.8 /app/libunwind-aarch64.so.8
 COPY ./lib/${TARGETARCH}/node_addon.node /app/node_addon.node
 
-
 COPY ./load.cjs /app/
+COPY ./entrypoint.sh /app/
 
-CMD ["node", "/app/load.cjs"]
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
