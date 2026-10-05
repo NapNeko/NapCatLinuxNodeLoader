@@ -1,4 +1,4 @@
-FROM node:20.19-bullseye-slim
+FROM node:20.19-bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
@@ -16,6 +16,7 @@ RUN apt update && apt install -y \
     libmd0 \
     libx11-xcb1 \
     libglib2.0-0 \
+    libgssapi-krb5-2 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ./extracted/wrapper.node /app/
